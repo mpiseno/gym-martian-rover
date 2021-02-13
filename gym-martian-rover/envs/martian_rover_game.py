@@ -13,37 +13,41 @@ SCREEN_HEIGHT = 400
 
 GRAVITY = 1
 
+
 class Rover(pygame.sprite.Sprite):
     def __init__(self, size=(50, 20), x=None, y=None, color=BLACK):
         super().__init__()
-        self.x = x
-        self.y = y
-        if not self.x: self.x = random.randint(size[0]//2, SCREEN_WIDTH - size[0]//2)
-        if not self.y: self.y = random.randint(size[1]//2, SCREEN_HEIGHT - size[1]//2)
-        self.position = euclid3.Vector2(self.x, self.y)
-        self.velocity = euclid3.Vector2(1, 0)
-        self.size = size
+        if not x: x = random.randint(size[0]//2, SCREEN_WIDTH - size[0]//2)
+        if not y: y = random.randint(size[1]//2, SCREEN_HEIGHT - size[1]//2)
+        self.position = euclid3.Vector2(x, y)
+        self.velocity = euclid3.Vector2(15, 0)
+        self.width, self.height = size
         self.color = color
 
-        self.surf = pygame.Surface(self.size)
-        self.surf.fill(self.color)
-        self.rover = self.surf.get_rect(center=(self.x, self.y))
+        #self.surf = pygame.Surface(self.size)
+        #self.surf.fill(self.color)
+        #self.rover = self.surf.get_rect(center=(self.x, self.y))
 
     def update(self, dt):
         # Handle key presses
         pressed_keys = pygame.key.get_pressed()
-        if self.rover.left > 0:
-            if pressed_keys[K_LEFT]:
-                self.rover.move_ip(-5, 0)
-        if self.rover.right < SCREEN_WIDTH:        
-              if pressed_keys[K_RIGHT]:
-                  self.rover.move_ip(5, 0)
+        if self.position.x > self.width // 2 and pressed_keys[K_LEFT]:
+            self.position.x = max(0, self.position.x - 5)
+        elif self.position.x < SCREEN_WIDTH - self.width // 2 and pressed_keys[K_RIGHT]:
+            self.position.x = min(SCREEN_WIDTH, self.position.x + 5)
         
         # Handle gravity
+        print(self.position)
         self.position += self.velocity * dt
+        #self.rover.position = self.position
 
     def display(self, surface):
-        surface.blit(self.surf, self.rover)
+        pygame.draw.rect(
+            surface,
+            self.color,
+            (self.position.x - self.width // 2, self.position.y - self.height // 2, self.width, self.height)
+        )
+        #surface.blit(self.surf, self.rover)
 
 
 pygame.init()
