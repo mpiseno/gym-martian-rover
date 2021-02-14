@@ -1,11 +1,11 @@
 import sys
 import random
+import numpy as np
 import pygame
 from pygame.locals import *
 
-vec = pygame.math.Vector2
-pygame.init()
 
+vec = pygame.math.Vector2
 RED = pygame.Color(255, 0, 0)
 BLACK = pygame.Color(0, 0, 0)
 WHITE = pygame.Color(255, 255, 255)
@@ -13,12 +13,21 @@ ORANGE = pygame.Color(175, 99, 0)
 FPS = 40
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 400
-ROVER_ACC = 1
+ROVER_ACC = 2
 FRICTION = -0.05
 GRAVITY = vec(0.0, 0.5)
+EXTERIOR_FORCES = {
+    'WIND': vec(-0.1, 0)
+}
 
-font = pygame.font.SysFont("Verdana", 60)
-goal_met = font.render("Goal met", True, RED)
+#font = pygame.font.SysFont("Verdana", 60)
+#goal_met = font.render("Goal met", True, RED)
+
+ACTION_MAPPING = {
+    0: 0,
+    1: -ROVER_ACC,
+    2: ROVER_ACC
+}
 
 class Goal(pygame.sprite.Sprite):
     def __init__(self, size=(100, 100), x=300, y=SCREEN_HEIGHT // 2):
@@ -27,17 +36,17 @@ class Goal(pygame.sprite.Sprite):
         self.image.fill(RED)
         self.rect = self.image.get_rect()
         self.rect.center = (x, y)
-        self.position = vec(x, y)
+        self.pos = vec(x, y)
         self.color = RED
 
     def didContact(self, xCoord, yCoord):
-        xIntersect = (self.position.x - self.width // 2) < xCoord < (self.position.x + self.width // 2)
-        yIntersect = (self.position.y - self.height // 2) < yCoord < (self.position.y + self.height // 2)
+        xIntersect = (self.pos.x - self.width // 2) < xCoord < (self.pos.x + self.width // 2)
+        yIntersect = (self.pos.y - self.height // 2) < yCoord < (self.pos.y + self.height // 2)
         return xIntersect and yIntersect
 
 
 class Rover(pygame.sprite.Sprite):
-    def __init__(self, size=(50, 20), color=WHITE):
+    def __init__(self, size=(50, 50), color=WHITE):
         super().__init__()
         self.image = pygame.Surface(size)
         self.image.fill(color)
@@ -51,9 +60,9 @@ class Rover(pygame.sprite.Sprite):
         self.color = color
 
     def update(self, action=None):
-        # 0 is left and 1 is right
-        # Handle key presses
         self.acc = vec(GRAVITY.x, GRAVITY.y)
+
+        # If action is None, we assume a human is playing and therefore look for key presses
         if action is None:
             pressed_keys = pygame.key.get_pressed()
             if pressed_keys[K_LEFT]:
@@ -61,22 +70,23 @@ class Rover(pygame.sprite.Sprite):
             elif pressed_keys[K_RIGHT]:
                 self.acc.x += ROVER_ACC
         else:
-            if action == 0:
-                self.acc.x -= ROVER_ACC
-            else:
-                self.acc.x += ROVER_ACC
+            self.acc.x += ACTION_MAPPING.get(action, 0)
 
+        # Kinematics
         self.acc.x += self.vel.x * FRICTION
+        self.apply_exterior_forces()
         self.vel += self.acc
-        
         self.pos += self.vel + 0.5 * self.acc
 
-        if self.pos.x > SCREEN_WIDTH:
-            self.pos.x = 0
-        if self.pos.x < 0:
-            self.pos.x = SCREEN_WIDTH
+        # Keep stuff in bounds
+        self.pos.x = min(self.pos.x, SCREEN_WIDTH)
+        self.pos.x = max(self.pos.x, 0)
 
         self.rect.midbottom = self.pos
+
+    def apply_exterior_forces(self):
+        for force, vector in EXTERIOR_FORCES.items():
+            self.acc += vector
 
 
 class LandScape(pygame.sprite.Sprite):
@@ -96,12 +106,15 @@ class RoverGame:
         self.clock = pygame.time.Clock()
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         self.screen.fill(BLACK)
-
+        self.reset()
+    
+    def reset(self):
         self.all_sprites = pygame.sprite.Group()
         self.landscape_sprites = pygame.sprite.Group()
         self.goal_sprites = pygame.sprite.Group()
 
-        self.rover = Rover()
+        # The size of the rover is defined so that the image fits on top of it
+        self.rover = Rover(size=(50, 50))
         self.all_sprites.add(self.rover)
 
         self.goal = Goal(size=(5, 50))
@@ -122,8 +135,12 @@ class RoverGame:
             self.update()
             self.draw()
 
-    def update(self, human=False, action=None):
+        return self.success
+
+    def update(self, action=None):
         self.all_sprites.update(action=action)
+
+        # Check for collisions
         hits = pygame.sprite.spritecollide(self.rover, self.landscape_sprites, False)
         if hits:
             self.rover.pos.y = hits[0].rect.top + 1
@@ -143,11 +160,20 @@ class RoverGame:
         self.screen.fill(BLACK)
         self.all_sprites.draw(self.screen)
         pygame.display.flip()
-        return None
+        return np.flipud(np.rot90(pygame.surfarray.array3d(pygame.display.get_surface())))
 
-    def reset(self):
-        pass
+    def get_state(self):
+        # We define state as a vector of position, velocity, and goal location
+        return [
+            self.rover.pos.x, self.rover.pos.y,
+            self.rover.vel.x, self.rover.vel.y,
+            self.goal.pos.x, self.goal.pos.y
+        ]
 
-
-# g = Game()
-# g.run()
+if __name__ == '__main__':
+    g = RoverGame()
+    success = g.run()
+    if success:
+        print(f'Congratulations, you won!')
+    else:
+        print(f'You lost!')
