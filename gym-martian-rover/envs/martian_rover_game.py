@@ -82,7 +82,7 @@ class LandScape(pygame.sprite.Sprite):
         self.rect.y = 200
 
 
-class Game:
+class RoverGame:
     def __init__(self):
         pygame.init()
         pygame.display.set_caption("Martian Rover")
@@ -115,8 +115,8 @@ class Game:
             self.update()
             self.draw()
 
-    def update(self):
-        self.all_sprites.update()
+    def update(self, human=False, action=None):
+        self.all_sprites.update(human=human, action=action)
         hits = pygame.sprite.spritecollide(self.rover, self.landscape_sprites, False)
         if hits:
             self.rover.pos.y = hits[0].rect.top + 1
@@ -131,14 +131,16 @@ class Game:
         for event in pygame.event.get():
             if event.type == QUIT:
                 self.running = False
-                #pygame.quit()
-                #sys.exit()
 
     def draw(self):
         self.screen.fill(BLACK)
         self.all_sprites.draw(self.screen)
         pygame.display.flip()
+        return None
+
+    def reset(self):
+        pass
 
 
-g = Game()
-g.run()
+# g = Game()
+# g.run()
