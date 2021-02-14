@@ -1,74 +1,120 @@
 import sys
 import random
-import euclid3
 import pygame
 from pygame.locals import *
 
-
+vec = pygame.math.Vector2
 BLACK = pygame.Color(0, 0, 0)
 WHITE = pygame.Color(255, 255, 255)
+ORANGE = pygame.Color(175, 99, 0)
 FPS = 40
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 400
-
-GRAVITY = 1
-
+ROVER_ACC = 1
+FRICTION = -0.05
+GRAVITY = vec(0.0, 0.5)
 
 class Rover(pygame.sprite.Sprite):
-    def __init__(self, size=(50, 20), x=None, y=None, color=BLACK):
+    def __init__(self, size=(50, 20), color=WHITE):
         super().__init__()
-        if not x: x = random.randint(size[0]//2, SCREEN_WIDTH - size[0]//2)
-        if not y: y = random.randint(size[1]//2, SCREEN_HEIGHT - size[1]//2)
-        self.position = euclid3.Vector2(x, y)
-        self.velocity = euclid3.Vector2(15, 0)
+        self.image = pygame.Surface(size)
+        self.image.fill(color)
+        self.rect = self.image.get_rect()
+        self.width, self.height = size
+        #self.rect.center = (self.width / 2, self.height / 2)
+        self.pos = vec(3 * SCREEN_WIDTH // 4, SCREEN_HEIGHT // 4)
+        self.vel = vec(0, 0)
+        self.acc = GRAVITY
         self.width, self.height = size
         self.color = color
 
-        #self.surf = pygame.Surface(self.size)
-        #self.surf.fill(self.color)
-        #self.rover = self.surf.get_rect(center=(self.x, self.y))
-
-    def update(self, dt):
+    def update(self):
         # Handle key presses
+        self.acc = vec(GRAVITY.x, GRAVITY.y)
         pressed_keys = pygame.key.get_pressed()
-        if self.position.x > self.width // 2 and pressed_keys[K_LEFT]:
-            self.position.x = max(0, self.position.x - 5)
-        elif self.position.x < SCREEN_WIDTH - self.width // 2 and pressed_keys[K_RIGHT]:
-            self.position.x = min(SCREEN_WIDTH, self.position.x + 5)
+        if pressed_keys[K_LEFT]:
+            self.acc.x -= ROVER_ACC
+        elif pressed_keys[K_RIGHT]:
+            self.acc.x += ROVER_ACC
         
-        # Handle gravity
-        print(self.position)
-        self.position += self.velocity * dt
-        #self.rover.position = self.position
+        self.acc.x += self.vel.x * FRICTION
+        self.vel += self.acc
+        
+        self.pos += self.vel + 0.5 * self.acc
 
-    def display(self, surface):
-        pygame.draw.rect(
-            surface,
-            self.color,
-            (self.position.x - self.width // 2, self.position.y - self.height // 2, self.width, self.height)
-        )
-        #surface.blit(self.surf, self.rover)
+        if self.pos.x > SCREEN_WIDTH:
+            self.pos.x = 0
+        if self.pos.x < 0:
+            self.pos.x = SCREEN_WIDTH
+
+        self.rect.midbottom = self.pos
 
 
-pygame.init()
-clock = pygame.time.Clock()
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-screen.fill(WHITE)
-pygame.display.set_caption("Martian Rover")
+class LandScape(pygame.sprite.Sprite):
+    def __init__(self, w=600, h=200):
+        super().__init__()
+        self.image = pygame.Surface((w, h))
+        self.image.fill(ORANGE)
+        self.rect = self.image.get_rect()
+        self.rect.x = 200
+        self.rect.y = 200
 
-rover = Rover()
-game_over = False
-while not game_over:
-    pygame.display.update()
-    for event in pygame.event.get():
-        if event.type == QUIT:
-            pygame.quit()
-            sys.exit()
+
+class Game:
+    def __init__(self):
+        pygame.init()
+        pygame.display.set_caption("Martian Rover")
+        self.clock = pygame.time.Clock()
+        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+        self.screen.fill(BLACK)
+
+        self.all_sprites = pygame.sprite.Group()
+        self.landscape_sprites = pygame.sprite.Group()
+
+        self.rover = Rover()
+        self.all_sprites.add(self.rover)
+
+        self.landscape = LandScape()
+        self.all_sprites.add(self.landscape)
+        self.landscape_sprites.add(self.landscape)
+        self.running = True
+
+    def run(self):
+        while self.running:
+            self.clock.tick(FPS)
+            self.events()
+            self.update()
+            self.draw()
+
+    def update(self):
+        self.all_sprites.update()
+        hits = pygame.sprite.spritecollide(self.rover, self.landscape_sprites, False)
+        if hits:
+            self.rover.pos.y = hits[0].rect.top + 1
+            self.rover.vel.y = 0
+
+    def events(self):
+        for event in pygame.event.get():
+            if event.type == QUIT:
+                self.running = False
+                #pygame.quit()
+                #sys.exit()
+
+    def draw(self):
+        self.screen.fill(BLACK)
+        self.all_sprites.draw(self.screen)
+        pygame.display.flip()
+
+
+g = Game()
+g.run()
     
-    clock_ms = clock.tick(FPS)
-    dt = clock_ms / 1000.0
-    rover.update(dt)
-    screen.fill(WHITE)
-    rover.display(screen)
 
-    pygame.display.update()
+    
+
+    # rover.update(dt)
+    # screen.fill(WHITE)
+    # landscape.display(screen)
+    # rover.display(screen)
+
+    # pygame.display.update()
