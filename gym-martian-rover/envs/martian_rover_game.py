@@ -50,15 +50,22 @@ class Rover(pygame.sprite.Sprite):
         self.width, self.height = size
         self.color = color
 
-    def update(self):
+    def update(self, action=None):
+        # 0 is left and 1 is right
         # Handle key presses
         self.acc = vec(GRAVITY.x, GRAVITY.y)
-        pressed_keys = pygame.key.get_pressed()
-        if pressed_keys[K_LEFT]:
-            self.acc.x -= ROVER_ACC
-        elif pressed_keys[K_RIGHT]:
-            self.acc.x += ROVER_ACC
-        
+        if action is None:
+            pressed_keys = pygame.key.get_pressed()
+            if pressed_keys[K_LEFT]:
+                self.acc.x -= ROVER_ACC
+            elif pressed_keys[K_RIGHT]:
+                self.acc.x += ROVER_ACC
+        else:
+            if action == 0:
+                self.acc.x -= ROVER_ACC
+            else:
+                self.acc.x += ROVER_ACC
+
         self.acc.x += self.vel.x * FRICTION
         self.vel += self.acc
         
@@ -116,7 +123,7 @@ class RoverGame:
             self.draw()
 
     def update(self, human=False, action=None):
-        self.all_sprites.update(human=human, action=action)
+        self.all_sprites.update(action=action)
         hits = pygame.sprite.spritecollide(self.rover, self.landscape_sprites, False)
         if hits:
             self.rover.pos.y = hits[0].rect.top + 1
