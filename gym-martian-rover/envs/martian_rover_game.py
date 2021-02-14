@@ -17,17 +17,17 @@ ROVER_ACC = 2
 FRICTION = -0.05
 GRAVITY = vec(0.0, 0.5)
 EXTERIOR_FORCES = {
-    'WIND': vec(-0.1, 0)
+    #'WIND': vec(-0.1, 0)
 }
-
-#font = pygame.font.SysFont("Verdana", 60)
-#goal_met = font.render("Goal met", True, RED)
 
 ACTION_MAPPING = {
     0: 0,
     1: -ROVER_ACC,
     2: ROVER_ACC
 }
+
+#font = pygame.font.SysFont("Verdana", 60)
+#goal_met = font.render("Goal met", True, RED)
 
 class Goal(pygame.sprite.Sprite):
     def __init__(self, size=(100, 100), x=300, y=SCREEN_HEIGHT // 2):
@@ -48,10 +48,13 @@ class Goal(pygame.sprite.Sprite):
 class Rover(pygame.sprite.Sprite):
     def __init__(self, size=(50, 50), color=WHITE):
         super().__init__()
-        self.image = pygame.Surface(size)
-        self.image.fill(color)
-        self.rect = self.image.get_rect()
         self.width, self.height = size
+        self.image = pygame.image.load("rover.png")
+        self.image = pygame.transform.scale(self.image, (self.width, self.height))
+        self.surface = pygame.Surface(size)
+        # self.image = pygame.Surface(size)
+        # self.image.fill(color)
+        self.rect = self.image.get_rect()
         #self.rect.center = (self.width / 2, self.height / 2)
         self.pos = vec(7 * SCREEN_WIDTH // 8, SCREEN_HEIGHT // 4)
         self.vel = vec(0, 0)
@@ -87,25 +90,33 @@ class Rover(pygame.sprite.Sprite):
     def apply_exterior_forces(self):
         for force, vector in EXTERIOR_FORCES.items():
             self.acc += vector
+            
+    def draw(self, surface):
+        surface.blit(self.image, self.rect)
 
 
 class LandScape(pygame.sprite.Sprite):
     def __init__(self, w=600, h=200):
         super().__init__()
-        self.image = pygame.Surface((w, h))
-        self.image.fill(ORANGE)
+        self.surface = pygame.Surface((w, h))
+        self.image=pygame.image.load("terrain.jpg")
+        # self.image.fill(ORANGE)
+
         self.rect = self.image.get_rect()
         self.rect.x = 200
         self.rect.y = 200
+        self.surface.blit(self.image, self.rect)
 
 
 class RoverGame:
     def __init__(self):
         pygame.init()
         pygame.display.set_caption("Martian Rover")
+        self.background = pygame.image.load("starry_sky.jpg")
         self.clock = pygame.time.Clock()
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         self.screen.fill(BLACK)
+        self.screen.blit(self.background, (0, 0))
         self.reset()
     
     def reset(self):
@@ -132,6 +143,7 @@ class RoverGame:
         while self.running:
             self.clock.tick(FPS)
             self.events()
+            #self.screen.blit(background, (0, 0))
             self.update()
             self.draw()
 
@@ -141,6 +153,7 @@ class RoverGame:
         self.all_sprites.update(action=action)
 
         # Check for collisions
+        #self.screen.blit(self.rover.image, self.rover.rect)
         hits = pygame.sprite.spritecollide(self.rover, self.landscape_sprites, False)
         if hits:
             self.rover.pos.y = hits[0].rect.top + 1
@@ -158,6 +171,7 @@ class RoverGame:
 
     def draw(self):
         self.screen.fill(BLACK)
+        self.screen.blit(self.background, (0, 0))
         self.all_sprites.draw(self.screen)
         pygame.display.flip()
         return np.flipud(np.rot90(pygame.surfarray.array3d(pygame.display.get_surface())))
