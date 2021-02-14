@@ -4,6 +4,9 @@ import pygame
 from pygame.locals import *
 
 vec = pygame.math.Vector2
+pygame.init()
+
+RED = pygame.Color(255, 0, 0)
 BLACK = pygame.Color(0, 0, 0)
 WHITE = pygame.Color(255, 255, 255)
 ORANGE = pygame.Color(175, 99, 0)
@@ -14,6 +17,25 @@ ROVER_ACC = 1
 FRICTION = -0.05
 GRAVITY = vec(0.0, 0.5)
 
+font = pygame.font.SysFont("Verdana", 60)
+goal_met = font.render("Goal met", True, RED)
+
+class Goal(pygame.sprite.Sprite):
+    def __init__(self, size=(100, 100), x=300, y=SCREEN_HEIGHT // 2):
+        super().__init__()
+        self.image = pygame.Surface(size)
+        self.image.fill(RED)
+        self.rect = self.image.get_rect()
+        self.rect.center = (x, y)
+        self.position = vec(x, y)
+        self.color = RED
+
+    def didContact(self, xCoord, yCoord):
+        xIntersect = (self.position.x - self.width // 2) < xCoord < (self.position.x + self.width // 2)
+        yIntersect = (self.position.y - self.height // 2) < yCoord < (self.position.y + self.height // 2)
+        return xIntersect and yIntersect
+
+
 class Rover(pygame.sprite.Sprite):
     def __init__(self, size=(50, 20), color=WHITE):
         super().__init__()
@@ -22,7 +44,7 @@ class Rover(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.width, self.height = size
         #self.rect.center = (self.width / 2, self.height / 2)
-        self.pos = vec(3 * SCREEN_WIDTH // 4, SCREEN_HEIGHT // 4)
+        self.pos = vec(7 * SCREEN_WIDTH // 8, SCREEN_HEIGHT // 4)
         self.vel = vec(0, 0)
         self.acc = GRAVITY
         self.width, self.height = size
@@ -70,14 +92,21 @@ class Game:
 
         self.all_sprites = pygame.sprite.Group()
         self.landscape_sprites = pygame.sprite.Group()
+        self.goal_sprites = pygame.sprite.Group()
 
         self.rover = Rover()
         self.all_sprites.add(self.rover)
 
+        self.goal = Goal(size=(5, 50))
+        self.all_sprites.add(self.goal)
+        self.goal_sprites.add(self.goal)
+
         self.landscape = LandScape()
         self.all_sprites.add(self.landscape)
         self.landscape_sprites.add(self.landscape)
+
         self.running = True
+        self.success = False
 
     def run(self):
         while self.running:
@@ -92,6 +121,11 @@ class Game:
         if hits:
             self.rover.pos.y = hits[0].rect.top + 1
             self.rover.vel.y = 0
+
+        hits = pygame.sprite.spritecollide(self.rover, self.goal_sprites, False)
+        if hits and abs(self.rover.vel.x) < 0.5:
+            self.running = False
+            self.success = True
 
     def events(self):
         for event in pygame.event.get():
@@ -108,13 +142,3 @@ class Game:
 
 g = Game()
 g.run()
-    
-
-    
-
-    # rover.update(dt)
-    # screen.fill(WHITE)
-    # landscape.display(screen)
-    # rover.display(screen)
-
-    # pygame.display.update()
